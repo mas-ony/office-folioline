@@ -2,6 +2,16 @@
   "name": "folioline",
   "version": "0.1.0",
   "description": "Browser-based DOCX editor for desktop and mobile, with review tools, twelve interface languages and PDF and Markdown export: the built app, ready to host as static files",
+  "keywords": [
+    "docx",
+    "docx-editor",
+    "i18n",
+    "markdown",
+    "office",
+    "pdf",
+    "track-changes",
+    "word-processor"
+  ],
   "homepage": "https://github.com/mas-ony/office-folioline#readme",
   "bugs": {
     "url": "https://github.com/mas-ony/office-folioline/issues"

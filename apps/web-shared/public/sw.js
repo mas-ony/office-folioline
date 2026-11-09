@@ -1,7 +1,6 @@
 // Offline support: cache the app shell and same-origin assets as they are fetched.
 const CACHE = 'folioline-v1';
-// Caches this app has made (proseline and docx-workspace were its earlier names); other apps on the same origin keep theirs.
-const OWN = /^(folioline|proseline|docx-workspace)-v\d+$/;
+const OWN = /^folioline-v\d+$/;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon.svg'])).then(() => self.skipWaiting()));
