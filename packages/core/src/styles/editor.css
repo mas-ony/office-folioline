@@ -1,0 +1,1055 @@
+/* Document rendering for the DOCX editor. UI chrome lives in src/ui/ui.css. */
+
+.dx-root {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dx-canvas-bg, #e9ebee);
+  --dx-ins: #2f6fe4;
+  --dx-del: #d93025;
+  --dx-ins-bg: rgba(47, 111, 228, 0.07);
+  --dx-del-bg: rgba(217, 48, 37, 0.06);
+  --dx-fmt: #7b4fd6;
+  --dx-comment: rgba(255, 196, 0, 0.32);
+  --dx-comment-active: rgba(255, 170, 0, 0.6);
+  --dx-search: rgba(255, 213, 0, 0.55);
+  --dx-search-current: rgba(255, 140, 0, 0.75);
+  --dx-mark: #3b82f6;
+}
+
+.dx-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overflow-anchor: none;
+  -webkit-overflow-scrolling: touch;
+  outline: none;
+}
+
+.dx-sizer {
+  position: relative;
+  margin: 0 auto;
+}
+
+.dx-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.dx-pages {
+  position: absolute;
+  inset: 0;
+}
+
+.dx-page {
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16), 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.dx-page-blank::after {
+  content: 'Blank page';
+  position: absolute;
+  inset: 45% 0 auto;
+  text-align: center;
+  font: 12px system-ui, sans-serif;
+  color: #9aa1ab;
+}
+
+.dx-hf {
+  position: absolute;
+  overflow: visible;
+}
+
+.dx-col-rule {
+  position: absolute;
+  width: 0;
+  border-left: 0.75pt solid #000;
+}
+
+.dx-hf-static {
+  opacity: 0.62;
+}
+
+/* Footnotes and endnotes: read-only copies drawn above the body layer so they can be clicked. */
+.dx-notes {
+  position: absolute;
+  z-index: 2;
+}
+
+.dx-note-sep {
+  position: relative;
+  height: 18px;
+}
+
+.dx-note-sep::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: min(192px, 33%);
+  border-top: 0.75pt solid #000;
+}
+
+.dx-note {
+  cursor: pointer;
+}
+
+.dx-note:hover {
+  background: rgba(59, 130, 246, 0.07);
+}
+
+.dx-note-num {
+  vertical-align: super;
+  font-size: 0.65em;
+  line-height: 0;
+}
+
+.dx-web-notes {
+  position: relative;
+  margin-top: 24px;
+}
+
+.dx-hf-editing .dx-hf-static {
+  opacity: 1;
+}
+
+.dx-hf-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout style;
+}
+
+.dx-hf-proto {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.dx-body-host {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+}
+
+.dx-doc {
+  outline: none;
+  box-sizing: content-box;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  color: #000;
+  caret-color: #000;
+  cursor: text;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.dx-doc ::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/*
+ * Paragraphs: space before and after (--dx-sb, --dx-sa) is padding, since Word adds the two and
+ * does not collapse them. A side with a border or shading (--dx-ob, --dx-oa) takes the spacing
+ * as margin instead, so the border and the shading stay inside it as in Word.
+ */
+.dx-p {
+  position: relative;
+  min-height: 1em;
+  line-height: calc(var(--dx-lm, 1) * var(--dx-lhf, 1.17));
+  margin: calc(var(--dx-sb, 0pt) * var(--dx-ob, 0)) 0 calc(var(--dx-sa, 0pt) * var(--dx-oa, 0));
+  padding-top: calc(var(--dx-sb, 0pt) * (1 - var(--dx-ob, 0)) + var(--dx-bts, 0pt));
+  padding-bottom: calc(var(--dx-sa, 0pt) * (1 - var(--dx-oa, 0)) + var(--dx-bbs, 0pt));
+}
+
+.dx-ctx-top {
+  --dx-sb: 0pt !important;
+}
+
+.dx-ctx-bottom {
+  --dx-sa: 0pt !important;
+}
+
+/* List labels */
+.dx-list::before {
+  content: attr(data-label);
+  display: inline-block;
+  min-width: var(--dx-hanging, 18pt);
+  text-indent: 0;
+  font-family: var(--dx-lf, inherit);
+  font-size: var(--dx-ls, inherit);
+  font-weight: var(--dx-lw, inherit);
+  font-style: normal;
+  text-decoration: none;
+  color: var(--dx-lc, inherit);
+  white-space: pre;
+  box-sizing: border-box;
+  padding-right: 2pt;
+}
+
+.dx-list.dx-suff-space::before {
+  min-width: 0;
+  content: attr(data-label) ' ';
+}
+
+.dx-list.dx-suff-nothing::before {
+  min-width: 0;
+  padding-right: 0;
+}
+
+.dx-list.dx-list-right::before {
+  text-align: right;
+  padding-right: 6pt;
+}
+
+.dx-list.dx-list-center::before {
+  text-align: center;
+}
+
+/* Inline atoms */
+.dx-tab {
+  display: inline-block;
+  height: 1em;
+  vertical-align: baseline;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.dx-tab[data-leader='dot'] {
+  background-image: radial-gradient(circle, currentColor 0.7px, transparent 0.8px);
+  background-size: 4px 3px;
+  background-repeat: repeat-x;
+  background-position: 0 92%;
+}
+
+.dx-tab[data-leader='hyphen'] {
+  border-bottom: 1px dashed currentColor;
+}
+
+.dx-tab[data-leader='underscore'],
+.dx-tab[data-leader='heavy'] {
+  border-bottom: 1px solid currentColor;
+}
+
+.dx-tab[data-leader='middleDot'] {
+  background-image: radial-gradient(circle, currentColor 0.7px, transparent 0.8px);
+  background-size: 4px 3px;
+  background-repeat: repeat-x;
+  background-position: 0 55%;
+}
+
+.dx-page-break,
+.dx-column-break {
+  display: block;
+  height: 0;
+  user-select: none;
+}
+
+.dx-view-web .dx-page-break,
+.dx-show-marks .dx-page-break,
+.dx-show-marks .dx-column-break {
+  height: auto;
+  margin: 2pt 0;
+  border-top: 1px dashed #8a94a6;
+  font: 9px/1.6 system-ui, sans-serif;
+  color: #6b7280;
+  text-align: center;
+  text-indent: 0;
+}
+
+.dx-view-web .dx-page-break::after,
+.dx-show-marks .dx-page-break::after {
+  content: 'Page Break';
+}
+
+.dx-show-marks .dx-column-break::after {
+  content: 'Column Break';
+}
+
+.dx-section-break {
+  height: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+.dx-show-marks .dx-section-break,
+.dx-view-web .dx-section-break {
+  height: auto;
+  border-top: 3px double #8a94a6;
+  margin: 4pt 0;
+}
+
+.dx-show-marks .dx-section-break::after,
+.dx-view-web .dx-section-break::after {
+  content: attr(data-label);
+  display: block;
+  font: 9px/1.6 system-ui, sans-serif;
+  color: #6b7280;
+  text-align: center;
+}
+
+.dx-section-break.ProseMirror-selectednode {
+  outline: 2px solid var(--dx-mark);
+}
+
+.dx-fld,
+.dx-instr,
+.dx-bookmark,
+.dx-bookmark-end {
+  display: none;
+}
+
+.dx-show-marks .dx-fld-begin::before {
+  content: '{';
+  color: #9ca3af;
+  display: inline;
+}
+
+.dx-show-marks .dx-fld-end::before {
+  content: '}';
+  color: #9ca3af;
+}
+
+.dx-show-marks .dx-fld {
+  display: inline;
+}
+
+.dx-page-field {
+  user-select: none;
+}
+
+.dx-footnote-ref::after {
+  content: attr(data-num);
+}
+
+.dx-opaque {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px dashed #9ca3af;
+  background: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 6px, #f1f5f9 6px, #f1f5f9 12px);
+  color: #475569;
+  font: 10px/1.4 system-ui, sans-serif;
+  padding: 2px 4px;
+  vertical-align: bottom;
+  overflow: hidden;
+  box-sizing: border-box;
+  white-space: normal;
+  text-indent: 0;
+}
+
+.dx-opaque-img {
+  padding: 0;
+  border: none;
+  background: none;
+  object-fit: contain;
+}
+
+.dx-opaque-block {
+  border: 1px dashed #9ca3af;
+  padding: 6px;
+  color: #475569;
+  font: 11px system-ui, sans-serif;
+  background: #f8fafc;
+}
+
+.dx-hidden {
+  display: none;
+}
+
+.dx-show-marks .dx-hidden {
+  display: inline;
+  text-decoration: underline dotted #6b7280;
+}
+
+/* Links */
+.dx-link {
+  color: inherit;
+  text-decoration: inherit;
+  cursor: text;
+}
+
+.dx-doc:not([contenteditable='true']) .dx-link,
+.dx-link:hover {
+  cursor: pointer;
+}
+
+/* Images */
+.dx-image-wrap {
+  display: inline-block;
+  position: relative;
+  line-height: 0;
+  vertical-align: baseline;
+  max-width: 100%;
+}
+
+.dx-image {
+  display: inline-block;
+  max-width: none;
+  user-select: none;
+}
+
+.dx-view-web .dx-image {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.dx-image-handle {
+  display: none;
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1.5px solid var(--dx-mark);
+  border-radius: 2px;
+  box-sizing: border-box;
+  touch-action: none;
+  z-index: 3;
+}
+
+.dx-image-wrap.ProseMirror-selectednode {
+  outline: 2px solid var(--dx-mark);
+  outline-offset: 1px;
+}
+
+.dx-image-wrap.ProseMirror-selectednode .dx-image-handle {
+  display: block;
+}
+
+.dx-handle-nw { left: -6px; top: -6px; cursor: nwse-resize; }
+.dx-handle-n { left: calc(50% - 5px); top: -6px; cursor: ns-resize; }
+.dx-handle-ne { right: -6px; top: -6px; cursor: nesw-resize; }
+.dx-handle-e { right: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+.dx-handle-se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.dx-handle-s { left: calc(50% - 5px); bottom: -6px; cursor: ns-resize; }
+.dx-handle-sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+.dx-handle-w { left: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+
+@media (pointer: coarse) {
+  .dx-image-handle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+  }
+  .dx-handle-nw { left: -12px; top: -12px; }
+  .dx-handle-ne { right: -12px; top: -12px; }
+  .dx-handle-sw { left: -12px; bottom: -12px; }
+  .dx-handle-se { right: -12px; bottom: -12px; }
+  .dx-handle-n,
+  .dx-handle-e,
+  .dx-handle-s,
+  .dx-handle-w { display: none !important; }
+}
+
+/* Tables */
+.dx-table-wrap {
+  margin: 0;
+  max-width: none;
+}
+
+.dx-view-web .dx-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.dx-table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+}
+
+.dx-table td {
+  position: relative;
+  vertical-align: top;
+  box-sizing: border-box;
+  padding: 0 5.4pt;
+  min-width: 1em;
+}
+
+.dx-mode-editing .dx-table td.dx-cell-borderless,
+.dx-mode-suggesting .dx-table td.dx-cell-borderless {
+  outline: 1px dashed rgba(100, 116, 139, 0.35);
+  outline-offset: -1px;
+}
+
+.dx-cell-placeholder {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+}
+
+.dx-table .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.18);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.dx-table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 20;
+  background-color: var(--dx-mark);
+  pointer-events: none;
+}
+
+.dx-doc.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Pagination gaps (inserted by the layout engine) */
+.dx-gap {
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dx-gap-inline {
+  display: block;
+}
+
+.dx-gap-row,
+.dx-gap-row td {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+
+/* Revisions: dashed boxes around insertions and deletions. */
+.dx-ins {
+  text-decoration: none;
+  outline: 1px dashed var(--dx-ins);
+  outline-offset: -1px;
+  background-color: var(--dx-ins-bg);
+}
+
+.dx-del {
+  color: var(--dx-del);
+  text-decoration: line-through;
+  text-decoration-color: var(--dx-del);
+  outline: 1px dashed var(--dx-del);
+  outline-offset: -1px;
+  background-color: var(--dx-del-bg);
+}
+
+.dx-final .dx-ins,
+.dx-final .dx-del,
+.dx-original .dx-ins,
+.dx-original .dx-del {
+  outline: none;
+  background-color: transparent;
+}
+
+/* Content controls (fields) */
+.dx-field {
+  background-color: rgba(36, 86, 245, 0.07);
+  box-shadow: inset 0 -1px 0 rgba(36, 86, 245, 0.45);
+  border-radius: 2px;
+}
+
+.dx-field-placeholder {
+  color: #6b7280;
+}
+
+.dx-field-focus,
+.dx-field-focus .dx-field {
+  background-color: #fde68a;
+  box-shadow: inset 0 -2px 0 #d4a106;
+}
+
+.dx-mode-viewing .dx-field {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.dx-painting .dx-doc {
+  cursor: copy;
+}
+
+.dx-fmt-change {
+  text-decoration: underline dotted var(--dx-fmt);
+}
+
+.dx-mark-ins::after {
+  content: '';
+  position: absolute;
+  left: -10pt;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--dx-ins);
+}
+
+.dx-mark-del::after {
+  content: '';
+  position: absolute;
+  left: -10pt;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--dx-del);
+}
+
+.dx-final .dx-del {
+  display: none;
+}
+
+.dx-final .dx-ins {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+.dx-final .dx-fmt-change {
+  text-decoration: inherit;
+}
+
+.dx-final .dx-mark-ins::after,
+.dx-final .dx-mark-del::after,
+.dx-original .dx-mark-ins::after,
+.dx-original .dx-mark-del::after {
+  display: none;
+}
+
+/* Original: the text before the tracked changes. */
+.dx-original .dx-ins {
+  display: none;
+}
+
+.dx-original .dx-del {
+  color: inherit;
+  text-decoration: inherit;
+  background: none;
+  border: 0;
+}
+
+.dx-original .dx-fmt-change {
+  text-decoration: inherit;
+}
+
+/* Comments and search */
+.dx-comment {
+  background-color: var(--dx-comment);
+}
+
+.dx-comment-active,
+.dx-comment-active .dx-comment {
+  background-color: var(--dx-comment-active);
+}
+
+.dx-hide-comments .dx-comment,
+.dx-hide-comments .dx-comment-active {
+  background-color: transparent;
+}
+
+.dx-search-hit {
+  background-color: var(--dx-search);
+  border-radius: 2px;
+}
+
+.dx-search-current {
+  background-color: var(--dx-search-current);
+  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.6);
+}
+
+/* Non-printing characters */
+.dx-show-marks .dx-p::after {
+  content: '¶';
+  color: var(--dx-mark);
+  font-family: Arial, sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  text-decoration: none;
+  pointer-events: none;
+}
+
+.dx-show-marks .dx-tab {
+  background-image: linear-gradient(to right, transparent calc(100% - 9px), transparent 0);
+  position: relative;
+}
+
+.dx-show-marks .dx-tab::after {
+  content: '→';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--dx-mark);
+  font: 0.8em/1.25 Arial, sans-serif;
+}
+
+.dx-show-marks .dx-br::after {
+  content: '↵';
+  color: var(--dx-mark);
+}
+
+/* Header/footer editing */
+.dx-hf-editing .dx-body-host {
+  opacity: 0.4;
+}
+
+.dx-hf-active,
+.dx-page > .dx-hf.dx-hf-active {
+  z-index: 3;
+  outline: none;
+}
+
+.dx-header.dx-hf-active,
+.dx-footer.dx-hf-active {
+  outline: 1px dashed var(--dx-hf-accent, #2563eb);
+  outline-offset: 3px;
+}
+
+.dx-hf-live {
+  min-height: 1em;
+}
+
+/* The bar of the header/footer being edited: its name and an Options menu. */
+.dx-hf-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 600 12px/1.2 var(--dx-ui-font, system-ui, -apple-system, 'Segoe UI', sans-serif);
+  color: var(--dx-hf-accent, #2563eb);
+  white-space: nowrap;
+  user-select: none;
+  z-index: 4;
+  padding: 2px 0;
+}
+
+.dx-header .dx-hf-bar {
+  bottom: 100%;
+  margin-bottom: 6px;
+  border-bottom: 1px dashed var(--dx-hf-accent, #2563eb);
+}
+
+.dx-footer .dx-hf-bar {
+  top: 100%;
+  margin-top: 6px;
+  border-top: 1px dashed var(--dx-hf-accent, #2563eb);
+}
+
+.dx-hf-bar button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.dx-hf-bar button:hover,
+.dx-hf-bar button[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--dx-hf-accent, #2563eb) 12%, transparent);
+}
+
+/* "Double-click to edit header" while the pointer is over a page's top or bottom margin. */
+.dx-hf-hint {
+  display: none;
+  position: absolute;
+  font: 500 11px/18px var(--dx-ui-font, system-ui, sans-serif);
+  color: #5b6472;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d6dbe3;
+  border-radius: 6px;
+  padding: 0 7px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.dx-page[data-hover='header'] .dx-hf-hint-header,
+.dx-page[data-hover='footer'] .dx-hf-hint-footer {
+  display: block;
+}
+
+.dx-page[data-hover='header'] .dx-header,
+.dx-page[data-hover='footer'] .dx-footer {
+  outline: 1px dashed #c3cad5;
+  outline-offset: 3px;
+  cursor: text;
+}
+
+/* Web (reflow) view: no pages, content fills the window. */
+.dx-view-web .dx-sizer {
+  width: auto !important;
+  height: auto !important;
+  margin: 0;
+}
+
+.dx-view-web .dx-canvas {
+  position: static;
+  transform: none !important;
+}
+
+.dx-view-web .dx-body-host {
+  position: relative;
+  left: auto !important;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 20px 18px 40vh;
+  background: #fff;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.dx-view-web .dx-doc {
+  width: auto !important;
+  padding-top: 0 !important;
+}
+
+.dx-view-web .dx-pages,
+.dx-view-web .dx-hf-measure {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .dx-view-web .dx-body-host {
+    padding: 14px 14px 40vh;
+  }
+}
+
+/* Printing: only the cloned page canvas is visible. */
+.dx-print-host {
+  display: none;
+}
+
+@media print {
+  body.dx-printing > *:not(.dx-print-host) {
+    display: none !important;
+  }
+
+  body.dx-printing {
+    margin: 0;
+    background: #fff;
+  }
+
+  .dx-print-host {
+    display: block;
+  }
+
+  .dx-print-host .dx-canvas {
+    position: relative;
+    transform: none !important;
+  }
+
+  .dx-print-host .dx-page {
+    box-shadow: none;
+  }
+
+  .dx-print-host .dx-hf-static {
+    opacity: 1;
+  }
+
+  .dx-print-host .dx-comment,
+  .dx-print-host .dx-search-hit,
+  .dx-print-host .dx-field,
+  .dx-print-host .dx-field-focus,
+  .dx-print-host .dx-comment-active {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .dx-print-host .dx-cell-borderless {
+    outline: none !important;
+  }
+
+  .dx-print-host .dx-hf-measure,
+  .dx-print-host .dx-page-blank::after {
+    display: none;
+  }
+}
+
+/* Off-screen copy of the pages read by the PDF exporter (src/pdf). */
+.dx-export-host {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dx-export-host .dx-canvas {
+  position: relative;
+  transform: none !important;
+}
+
+.dx-export-host .dx-hf-static {
+  opacity: 1;
+}
+
+.dx-export-host .dx-comment,
+.dx-export-host .dx-comment-active,
+.dx-export-host .dx-search-hit,
+.dx-export-host .dx-field,
+.dx-export-host .dx-field-focus,
+.dx-export-host .ProseMirror-selectednode {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.dx-export-host .dx-cell-borderless,
+.dx-export-host .dx-ins,
+.dx-export-host .dx-del {
+  outline: none !important;
+  background: transparent !important;
+}
+
+.dx-export-host .dx-ins {
+  color: var(--dx-ins);
+  text-decoration: underline;
+}
+
+.dx-export-host.dx-final .dx-ins,
+.dx-export-host.dx-original .dx-del {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+.dx-export-host .dx-hf-measure,
+.dx-export-host .dx-page-blank::after,
+.dx-export-host .dx-image-handle,
+.dx-export-host .dx-hf-bar {
+  display: none !important;
+}
+
+/* Labels drawn by CSS are replaced with real text for the exporter. */
+.dx-export-host .dx-list::before,
+.dx-export-host .dx-footnote-ref::after {
+  content: none !important;
+}
+
+/* Collaborators' cursors and selections */
+.dx-remote-caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1.1em;
+  margin: 0 -1px;
+  border-left: 2px solid;
+  vertical-align: text-bottom;
+  pointer-events: none;
+}
+
+.dx-remote-name {
+  position: absolute;
+  /* Above pictures: floating ones are drawn at 1, those in front of the text at 2. */
+  z-index: 3;
+  left: -2px;
+  bottom: 100%;
+  padding: 1px 5px;
+  border-radius: 4px 4px 4px 0;
+  color: #fff;
+  font: 600 10px/1.3 system-ui, sans-serif;
+  white-space: nowrap;
+  user-select: none;
+  opacity: 0.92;
+}
+
+.dx-export-host .dx-remote-caret,
+.dx-print-host .dx-remote-caret {
+  display: none;
+}
+
+.dx-export-host .dx-remote-sel,
+.dx-print-host .dx-remote-sel {
+  background: transparent !important;
+}
+
+/* Watermarks: painted behind the page content, centred in the margins. */
+.dx-watermark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.dx-watermark[hidden] {
+  display: none;
+}
+
+.dx-watermark-text {
+  flex: none;
+  overflow: visible;
+}
+
+.dx-watermark-img {
+  flex: none;
+  object-fit: contain;
+}
+
+.dx-watermark-img.is-washout {
+  filter: contrast(0.32) brightness(1.62);
+}
+
+.dx-page > .dx-hf,
+.dx-page > .dx-notes {
+  z-index: 1;
+}
+
+.dx-watermark-src {
+  display: none;
+}
+
+/* Text boxes */
+.dx-textbox {
+  display: inline-block;
+  box-sizing: border-box;
+  vertical-align: top;
+  white-space: pre-wrap;
+  overflow: hidden;
+  padding: 3.6pt 7.2pt;
+  border: 0.75pt solid #000;
+  background: #fff;
+  line-height: 1.2;
+  text-indent: 0;
+  cursor: default;
+}
+
+.dx-textbox.ProseMirror-selectednode {
+  outline: 2px solid var(--dx-mark);
+}
+
+/* Show bookmarks: grey brackets around bookmarked text, a beam for point bookmarks. */
+.dx-show-bookmarks .dx-bookmark,
+.dx-show-bookmarks .dx-bookmark-end {
+  display: inline;
+  color: #8a94a3;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.dx-show-bookmarks .dx-bookmark::before {
+  content: '[';
+}
+
+.dx-show-bookmarks .dx-bookmark-end::before {
+  content: ']';
+}
+
+/* Forms protection: fields stand out, everything else is read-only. */
+.dx-forms-protected .dx-field {
+  background-color: rgba(36, 86, 245, 0.12);
+  box-shadow: inset 0 -1.5px 0 rgba(36, 86, 245, 0.6);
+}

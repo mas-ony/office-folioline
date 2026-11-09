@@ -1,0 +1,19 @@
+/* The editor fills the window. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f4f3ef;
+}
+
+html.is-dark body {
+  background: #111111;
+}
+
+#root {
+  height: 100vh;
+  height: 100dvh;
+}
