@@ -35,6 +35,7 @@ pnpm dev:vue         # the Vue app: http://localhost:5184
 pnpm build           # the packages into packages/*/dist, the apps into apps/web-react/dist and apps/web-vue/dist
                      # (installable PWAs when served over HTTPS)
 pnpm build:npm       # the React app without source maps in npm/dist, for the npm package
+pnpm -r publish --access public  # after pnpm build: the packages in packages/ to npm (pnpm turns workspace:* into versions)
 pnpm preview         # serve the React app's build on port 4178, with the live-session relay
 pnpm preview:vue     # serve the Vue app's build on port 4184, with the live-session relay
 pnpm test            # unit tests of all packages (pandoc and pdftotext are used for cross-checks when installed)
@@ -115,8 +116,9 @@ served elsewhere has no relay and cannot start a session.
 ### Components
 
 `@folioline/react` and `@folioline/vue` each export a `FoliolineEditor` component and a `mount()`
-function, with the same options. Import the package's `style.css` once (the fonts and the
-editor's styles). The editor fills its container, so give the container a height.
+function, with the same options. Both are on npm: `npm install @folioline/react react react-dom` or
+`npm install @folioline/vue vue`. Import the package's `style.css` once (the fonts and the editor's
+styles). The editor fills its container, so give the container a height.
 
 ```tsx
 import { FoliolineEditor } from '@folioline/react';
@@ -295,8 +297,6 @@ const server = await DocxEditorAPI.createServer(bytes, { author: 'Robot' }); // 
 
 ## Known gaps
 
-- The packages in `packages/` are not published to npm yet (they are marked private); another
-  project can use them from this workspace or from `pnpm pack` archives.
 - Live sessions need the relay (in the dev and preview servers, or `@folioline/relay` on another
   server); rooms live in memory, anyone who can reach the server with the link can join, and
   headers, footers and footnotes cannot be edited while a document is shared.

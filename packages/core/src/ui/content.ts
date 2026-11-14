@@ -56,7 +56,7 @@ export function diagnostics(editor: DocxEditor): Record<string, string | number>
     return true;
   });
   return {
-    app: 'Folioline 0.1.0',
+    app: 'Folioline 0.2.0',
     browser: navigator.userAgent,
     secureContext: String(window.isSecureContext),
     viewport: `${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio}`,

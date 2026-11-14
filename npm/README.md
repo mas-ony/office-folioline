@@ -9,9 +9,9 @@ menus in bottom sheets, and it also works over a plain HTTP address on the local
 Markdown export run in the browser.
 
 This package is the built app: static files to put on a web server. It has no dependencies and
-nothing to build. The React and Vue packages, for putting the editor inside an app instead, are in
-the [repository](https://github.com/mas-ony/office-folioline) (`packages/react` and `packages/vue`) and
-are not on npm yet.
+nothing to build. The React and Vue packages, for putting the editor inside an app instead, are
+[`@folioline/react`](https://www.npmjs.com/package/@folioline/react) and
+[`@folioline/vue`](https://www.npmjs.com/package/@folioline/vue).
 
 ## Install
 
@@ -59,10 +59,11 @@ opened, edited and saved in the browser; unless a live session is started, no do
 
 Editing together in real time (**Settings › Start a live session**, with an invite link and a QR
 code) needs Folioline's relay on the same server, answering under `/collab` at the root of the
-origin. The relay is a Vite plugin or Node middleware in the repository's `packages/relay`; it is
-not part of this package and not on npm yet. Served as static files, the app has no relay: the
-Settings panel says so and cannot start a session, and `?room=` links do not open. To find out,
-the app requests `/collab/health` when it starts, so a static server logs a 404 for that address.
+origin. The relay is a Vite plugin or Node middleware,
+[`@folioline/relay`](https://www.npmjs.com/package/@folioline/relay); it is not part of this
+package. Served as static files, the app has no relay: the Settings panel says so and cannot start a
+session, and `?room=` links do not open. To find out, the app requests `/collab/health` when it
+starts, so a static server logs a 404 for that address.
 
 ## Page API
 

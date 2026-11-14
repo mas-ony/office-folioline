@@ -1,8 +1,19 @@
 {
   "name": "@folioline/react",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
   "description": "Folioline DOCX editor as a React component",
+  "keywords": [
+    "docx",
+    "docx-editor",
+    "i18n",
+    "markdown",
+    "office",
+    "pdf",
+    "react",
+    "track-changes",
+    "typescript",
+    "word-processor"
+  ],
   "homepage": "https://github.com/mas-ony/office-folioline#readme",
   "bugs": {
     "url": "https://github.com/mas-ony/office-folioline/issues"

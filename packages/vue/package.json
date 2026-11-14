@@ -1,8 +1,19 @@
 {
   "name": "@folioline/vue",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
   "description": "Folioline DOCX editor as a Vue component",
+  "keywords": [
+    "docx",
+    "docx-editor",
+    "i18n",
+    "markdown",
+    "office",
+    "pdf",
+    "track-changes",
+    "typescript",
+    "vue",
+    "word-processor"
+  ],
   "homepage": "https://github.com/mas-ony/office-folioline#readme",
   "bugs": {
     "url": "https://github.com/mas-ony/office-folioline/issues"
