@@ -89,8 +89,9 @@ served elsewhere has no relay and cannot start a session.
 - **Pages**: pagination with sections and columns, headers and footers edited in place with an
   Options menu (page fields, different first page, different odd and even pages, link to
   previous, distances, remove), page numbers in the text, footnotes and endnotes, tables split
-  across pages, floating pictures with every wrapping style, text boxes, watermarks, a table of
-  contents that updates, forms protection, right-to-left text and CJK.
+  across pages, floating pictures with every wrapping style, text boxes, shapes and groups of
+  shapes and pictures, watermarks, a table of contents that updates, forms protection,
+  right-to-left text and CJK.
 - **Dialogs**: Page Setup, Paragraph (indents, spacing, pagination, tab stops), Watermark,
   Track changes options, Bookmark, Image properties, alt text, link, split cell, notes, text box.
   Lengths in the dialogs, on the rulers and in the header Options menu are in centimetres, or in
@@ -182,9 +183,9 @@ they are `@ready`, `@update:user`, `@update:locale` and `@update:colorScheme`, s
 `v-model:locale` and `v-model:color-scheme` work.
 
 The interface keeps its classes on its own element and on a layer it adds to the page's body for
-menus, dialogs and messages (`fl-` for the interface, `dx-` for the document). It changes nothing
-on `<html>` or `<body>` (apart from a class while printing), and several editors can share a
-page.
+menus, dialogs and messages (`fl-` for the interface, `dx-` for the document). It changes nothing on
+`<html>` or `<body>` (apart from a class while printing, which also lifts any height limit or
+clipping set on them), and several editors can share a page.
 
 Live sessions need the relay on the server that serves the page:
 
@@ -232,44 +233,48 @@ const server = await DocxEditorAPI.createServer(bytes, { author: 'Robot' }); // 
 
 ## Tests
 
-- 153 unit tests (Vitest). In `@folioline/core`: XML, import, export and round trips of five test
+- 172 unit tests (Vitest). In `@folioline/core`: XML, import, export and round trips of six test
   documents and the seven examples (each also compared through pandoc), footnotes and endnotes,
   fields, review features (comments, suggesting, markup modes, hidden reviewers, formatting
   tracking, search, list styles, table actions, bookmarks and cross-references, footnote editing,
   copy formatting), the sample document, Markdown export and escaping, watermarks, the table of
-  contents, splitting cells and borders, forms protection, picture wrapping, page setup, paragraph
-  settings, text boxes, paragraph spacing CSS, interface text formatting, the completeness of all
-  eleven translations, the PDF writer and fonts (text checked with pdftotext), the header and footer
-  distances typed in the Options menu, lengths in inches and centimetres in the dialogs, and both
-  programming interfaces. In `@folioline/relay`: rooms, two simulated clients editing at once, late
-  joiners and another base path. In `@folioline/react` and `@folioline/vue`, the same scenarios for
-  `mount()`: opening a document with a dark appearance and cleaning up, Settings reporting a new
+  contents, splitting cells and borders, forms protection, picture wrapping, shapes and groups
+  (theme colours, outlines, text in a group, copy and paste, vector paths in PDF files), page setup,
+  paragraph settings, text boxes, paragraph spacing CSS, interface text formatting, the completeness
+  of all eleven translations, the PDF writer and fonts (text checked with pdftotext), the header and
+  footer distances typed in the Options menu, lengths in inches and centimetres in the dialogs, and
+  both programming interfaces. In `@folioline/relay`: rooms, two simulated clients editing at once,
+  late joiners and another base path. In `@folioline/react` and `@folioline/vue`, the same scenarios
+  for `mount()`: opening a document with a dark appearance and cleaning up, Settings reporting a new
   name and dialogs in the layer, two editors on one page, and Replace all using the query just typed
   before its search has run.
-- 66 end-to-end tests (Playwright), the same 33 against the React app and the Vue app: 24 desktop
+- 72 end-to-end tests (Playwright), the same 36 against the React app and the Vue app: 27 desktop
   (the sample with its review panel and page fields, toolbar formatting, menus and the table grid,
   comments with replies and resolve, suggestions accepted and rejected, Display for Review and
   reviewer filters, the navigation pane with find, replace and bookmarks, the Page Setup, Paragraph
   and Watermark dialogs, the Page Setup and Paragraph dialogs in centimetres for a British English
   browser, a dialog opened from the toolbar's More panel, a click on a square-wrapped picture over
-  the paragraph that wraps around it, header editing with page numbers, the header Options menu
-  (page X of Y, distances, a different first page, linking a section to the previous one), Word, PDF
-  and Markdown export, settings with name, dark appearance, German and Hebrew, zoom and the
-  narrow-window toolbar, the examples, the table right-click menu, the page API, dragging a margin
-  on the ruler, a footnote inserted and edited in its dialog, template fields filled under forms
-  protection and two people editing in real time) and 9 phone (Pixel 7: tap and type in reflowed
-  text, a tap through the message at the bottom of the screen, the scrolling toolbar and the More
-  sheet, the menu sheet with modes, review and page view, an example opened from the menu sheet with
-  its pages scaled to the screen, comments in the review sheet, Word and PDF export from the menu
-  sheet and Word export from the Export menu, find in the navigation sheet). The suite also passes
-  over plain HTTP LAN addresses.
+  the paragraph that wraps around it, shapes and a group of a picture, a text box and a line drawn
+  on the page and in the PDF, printing every page with no blank one after the last, a picture
+  wrapped top and bottom at its offset and aligned right (still aligned after its dialog is applied
+  again), header editing with page numbers, the header Options menu (page X of Y, distances, a
+  different first page, linking a section to the previous one), Word, PDF and Markdown export,
+  settings with name, dark appearance, German and Hebrew, zoom and the narrow-window toolbar, the
+  examples, the table right-click menu, the page API, dragging a margin on the ruler, a footnote
+  inserted and edited in its dialog, template fields filled under forms protection and two people
+  editing in real time) and 9 phone (Pixel 7: tap and type in reflowed text, a tap through the
+  message at the bottom of the screen, the scrolling toolbar and the More sheet, the menu sheet with
+  modes, review and page view, an example opened from the menu sheet with its pages scaled to the
+  screen, comments in the review sheet, Word and PDF export from the menu sheet and Word export from
+  the Export menu, find in the navigation sheet). The suite also passes over plain HTTP LAN
+  addresses.
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
 | `packages/core` | `@folioline/core`, everything the two interfaces share |
-| `packages/core/src/core` | DOCX package (`ooxml/`), XML parser and serializer (`xml/`), document model and ProseMirror schema (`model/`, with watermarks and text boxes), import (`import/`) and export (`export/`, with Markdown), blank documents |
+| `packages/core/src/core` | DOCX package (`ooxml/`), XML parser and serializer (`xml/`), document model and ProseMirror schema (`model/`, with watermarks, text boxes and drawings), import (`import/`) and export (`export/`, with Markdown), blank documents |
 | `packages/core/src/editor` | The editor (`DocxEditor.ts`): commands, keymap, node views, pagination (`layout/`), headers and footers, notes, fields, bookmarks, table of contents, table formatting, pictures, paragraph settings, markup display, forms protection, plugins for comments, tracked changes, presence, numbering, search and table styles |
 | `packages/core/src/ui` | The interface without a framework: its state and actions (`controller.ts`, `FoliolineUI`), the editor's state for the views (`store.ts`), the commands, menus, toolbar layout, review cards, colour palettes and dialog values, autosave, options and types |
 | `packages/core/src/styles` | Fonts, document styles (`editor.css`) and interface styles (`ui.css`) |
@@ -284,7 +289,7 @@ const server = await DocxEditorAPI.createServer(bytes, { author: 'Robot' }); // 
 | `apps/web-react` | The full-page app in React |
 | `apps/web-vue` | The same app in Vue |
 | `apps/web-shared` | What both apps share: `src/shell.ts` reads the address, lists the examples, keeps the settings and unsaved work, sets the window title and the page's language, opens dropped files and installs the page API; `src/app.css` has the page styles; `public/` has the icons, manifest, service worker and example documents (generated by `scripts/make-fixtures.mjs`); `vite/assetLicenses.ts` completes the builds' licence files |
-| `tests/e2e` | Playwright tests, run against both apps |
+| `tests/e2e` | Playwright tests, run against both apps (one opens the `drawings.docx` test document) |
 | `scripts` | Test documents and examples (`make-fixtures.mjs`) |
 | `npm` | The npm package `folioline` (the built React app): its manifest, README and licence. Packing or publishing it there (`pnpm pack`, `npm publish`) runs `pnpm build:npm` first, and the package holds only `dist` |
 
@@ -302,6 +307,9 @@ const server = await DocxEditorAPI.createServer(bytes, { author: 'Robot' }); // 
   out in full, without page virtualisation.
 - Text boxes are shown with their fill and border but their text is edited in a dialog;
   equations, charts and SmartArt are kept unchanged and shown as placeholders.
+- Shapes, groups and drawing canvases are drawn but cannot be edited or moved. Like floating
+  pictures, they are placed from their paragraph and column, so positions measured from the page or
+  its margins come out shifted; shadows, glows and 3-D effects are not drawn.
 - Track changes options apply to the display; the editor records insertions, deletions and
   formatting, not moves.
 - In PDF files, words in right-to-left, complex and CJK scripts are pictures, not selectable text.

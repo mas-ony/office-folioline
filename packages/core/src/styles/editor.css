@@ -835,6 +835,13 @@
     display: none !important;
   }
 
+  /* A page that clips the window (overflow on html or body) would cut the printout to its first page. */
+  html:has(> body.dx-printing),
+  body.dx-printing {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   body.dx-printing {
     margin: 0;
     background: #fff;
@@ -847,6 +854,8 @@
   .dx-print-host .dx-canvas {
     position: relative;
     transform: none !important;
+    /* As tall as the pages: text running on below the last page would print a blank one. */
+    overflow: clip;
   }
 
   .dx-print-host .dx-page {
@@ -1029,6 +1038,106 @@
 
 .dx-textbox.ProseMirror-selectednode {
   outline: 2px solid var(--dx-mark);
+}
+
+/*
+ * Drawings (shapes, groups of shapes and pictures, drawing canvases) are shown, not edited.
+ * Their parts are placed absolutely in the drawing's box, in drawing order.
+ */
+.dx-drawing {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+  text-indent: 0;
+  user-select: none;
+  cursor: default;
+}
+
+.dx-drawing.ProseMirror-selectednode {
+  outline: 2px solid var(--dx-mark);
+  outline-offset: 1px;
+}
+
+/* Behind the text: under the body's paragraphs (the body layer is a stacking context). */
+.dx-drawing.dx-behind {
+  z-index: 0;
+}
+
+.dx-body-host .dx-drawing.dx-behind {
+  z-index: -1;
+}
+
+.dx-drawing-part {
+  position: absolute;
+  display: block;
+}
+
+.dx-drawing-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.dx-drawing-pic {
+  overflow: hidden;
+}
+
+.dx-drawing-pic > img,
+.dx-drawing-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  max-width: none;
+}
+
+.dx-drawing-fill {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Text in a shape: the document's defaults, not the formatting of the paragraph and run that
+ * hold the drawing (inherited properties and the paragraph's own custom properties reset).
+ */
+.dx-drawing-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  font-family: var(--dx-doc-font, inherit);
+  font-size: var(--dx-doc-size, inherit);
+  font-weight: 400;
+  font-style: normal;
+  font-variant: normal;
+  color: #000;
+  text-align: left;
+  text-indent: 0;
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  line-height: normal;
+  vertical-align: baseline;
+  --dx-lhf: var(--dx-doc-lhf, 1.17);
+  --dx-lm: 1;
+  --dx-sb: 0pt;
+  --dx-sa: 0pt;
+  --dx-ob: 0;
+  --dx-oa: 0;
+  --dx-bts: 0pt;
+  --dx-bbs: 0pt;
+  --dx-hanging: 0pt;
+}
+
+.dx-drawing-flow,
+.dx-drawing-text .dx-p {
+  display: block;
+}
+
+.dx-drawing-text.dx-nowrap .dx-p {
+  white-space: pre;
 }
 
 /* Show bookmarks: grey brackets around bookmarked text, a beam for point bookmarks. */

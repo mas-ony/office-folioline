@@ -23,10 +23,18 @@ const wrap = ref<WrapKind>(wrapKind(a?.anchor ?? null));
 const anchor = a?.anchor ?? null;
 const metric = rulerUsesMetric();
 const unitKey = metric ? 'common.centimeters' : 'common.inches';
-const hOff = ref(anchor?.hOffset !== undefined ? emuToField(anchor.hOffset, metric) : '0');
-const vOff = ref(anchor?.vOffset !== undefined ? emuToField(anchor.vOffset, metric) : '0');
-const hRel = ref<string>(anchor?.hRelative ?? 'column');
-const vRel = ref<string>(anchor?.vRelative ?? 'paragraph');
+// The position as its fields first show it. The fields hold only what is typed or picked (undefined
+// until then), and only that is applied, so a picture placed by an alignment keeps it.
+const shown = {
+  hOff: anchor?.hOffset !== undefined ? emuToField(anchor.hOffset, metric) : '0',
+  vOff: anchor?.vOffset !== undefined ? emuToField(anchor.vOffset, metric) : '0',
+  hRel: anchor?.hRelative ?? 'column',
+  vRel: anchor?.vRelative ?? 'paragraph',
+};
+const hOff = ref<string>();
+const vOff = ref<string>();
+const hRel = ref<string>();
+const vRel = ref<string>();
 const error = ref('');
 const close = () => ui.openModal(null);
 const ratio = a ? a.height / a.width : 1;
@@ -51,10 +59,10 @@ const apply = () => {
   }
   const patch: Parameters<typeof setImageProps>[2] = { width: wn * EMU_PER_PT, height: hn * EMU_PER_PT, title: title.value, alt: alt.value, wrap: wrap.value, href: href.value };
   if (floating.value && anchor && wrap.value === wrapKind(anchor)) {
-    patch.hOffset = fieldToEmu(hOff.value, metric, anchor.hOffset);
-    patch.vOffset = fieldToEmu(vOff.value, metric, anchor.vOffset);
-    patch.hRelative = hRel.value;
-    patch.vRelative = vRel.value;
+    if (hOff.value !== undefined) patch.hOffset = fieldToEmu(hOff.value, metric, anchor.hOffset);
+    if (vOff.value !== undefined) patch.vOffset = fieldToEmu(vOff.value, metric, anchor.vOffset);
+    if (hRel.value !== undefined) patch.hRelative = hRel.value;
+    if (vRel.value !== undefined) patch.vRelative = vRel.value;
   }
   setImageProps(editor.activeView, img.pos, patch);
   close();
@@ -82,13 +90,13 @@ const value = (e: Event) => (e.target as HTMLInputElement).value;
     </Section>
     <Section :title="t('imageProps.position')">
       <template v-if="floating && anchor">
-        <Row :label="t('imageProps.horizontal')" html-for="ip-ho" :unit="t(unitKey)"><input id="ip-ho" v-number-value="hOff" class="fl-input" type="number" step="0.1" @input="hOff = value($event)" /></Row>
+        <Row :label="t('imageProps.horizontal')" html-for="ip-ho" :unit="t(unitKey)"><input id="ip-ho" v-number-value="hOff ?? shown.hOff" class="fl-input" type="number" step="0.1" @input="hOff = value($event)" /></Row>
         <Row :label="t('imageProps.relativeH')" html-for="ip-hr">
-          <select id="ip-hr" v-value="hRel" class="fl-input" @change="hRel = value($event)"><option v-for="r in H_RELATIVE" :key="r" :value="r">{{ t(relKey(r)) }}</option></select>
+          <select id="ip-hr" v-value="hRel ?? shown.hRel" class="fl-input" @change="hRel = value($event)"><option v-for="r in H_RELATIVE" :key="r" :value="r">{{ t(relKey(r)) }}</option></select>
         </Row>
-        <Row :label="t('imageProps.vertical')" html-for="ip-vo" :unit="t(unitKey)"><input id="ip-vo" v-number-value="vOff" class="fl-input" type="number" step="0.1" @input="vOff = value($event)" /></Row>
+        <Row :label="t('imageProps.vertical')" html-for="ip-vo" :unit="t(unitKey)"><input id="ip-vo" v-number-value="vOff ?? shown.vOff" class="fl-input" type="number" step="0.1" @input="vOff = value($event)" /></Row>
         <Row :label="t('imageProps.relativeV')" html-for="ip-vr">
-          <select id="ip-vr" v-value="vRel" class="fl-input" @change="vRel = value($event)"><option v-for="r in V_RELATIVE" :key="r" :value="r">{{ t(relKey(r)) }}</option></select>
+          <select id="ip-vr" v-value="vRel ?? shown.vRel" class="fl-input" @change="vRel = value($event)"><option v-for="r in V_RELATIVE" :key="r" :value="r">{{ t(relKey(r)) }}</option></select>
         </Row>
       </template>
       <p v-else class="fl-note">{{ t('imageProps.positionInline') }}</p>

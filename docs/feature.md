@@ -94,6 +94,7 @@ and the tests.
 | Tables | Merged cells, nested tables, borders, shading |
 | Pictures | In line and floating with text wrapping (in line, square, tight, through, top and bottom, behind, in front); resize |
 | Text boxes | Shown with their fill and border; the text is edited in a dialog |
+| Shapes and groups | Shapes, groups of shapes, pictures and text boxes, and drawing canvases are drawn with their outlines, theme colours, gradients, dashes and arrowheads, on the page and in PDF files; they are kept unchanged and not edited |
 | Table of contents | Inserted from the Insert menu and updated with its entries and page numbers |
 | Fields | PAGE and NUMPAGES in the text |
 | Right-to-left and CJK | Right-to-left paragraphs and CJK text |
@@ -136,6 +137,9 @@ runtime, `packages/core/src/api/officeApi.ts`).
   out in full, without page virtualisation.
 - Text boxes are edited in a dialog; equations, charts and SmartArt are kept unchanged and shown
   as placeholders.
+- Shapes, groups and drawing canvases are drawn but cannot be edited or moved. Like floating
+  pictures, they are placed from their paragraph and column, so positions measured from the page or
+  its margins come out shifted; shadows, glows and 3-D effects are not drawn.
 - Track changes options apply to the display; the editor records insertions, deletions and
   formatting, not moves.
 - In PDF files, words in right-to-left, complex and CJK scripts are pictures, not selectable text.

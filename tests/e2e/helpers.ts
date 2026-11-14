@@ -1,4 +1,6 @@
-import { expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** The parts of the editor facade (window.docxEditor.getEditor()) the tests read. */
 type Ed = {
@@ -48,6 +50,87 @@ export async function openApp(page: Page, example?: string) {
 export async function openSample(page: Page) {
   await openApp(page, '');
   await expect.poll(() => fileName(page)).toBe('Sample Document.docx');
+}
+
+/** Open a test document from packages/core/tests/fixtures. */
+export async function openFixture(page: Page, name: string) {
+  await openApp(page);
+  await loadFixture(page, name);
+}
+
+/** Load a test document from packages/core/tests/fixtures into the open editor. */
+export async function loadFixture(page: Page, name: string) {
+  const bytes = readFileSync(new URL(`../../packages/core/tests/fixtures/${name}`, import.meta.url));
+  await page.evaluate(async ([data, file]) => {
+    type Api = { load(document: Uint8Array, fileName?: string): Promise<void> };
+    await (window as unknown as { docxEditor: Api }).docxEditor.load(new Uint8Array(data), file);
+  }, [Array.from(bytes), name] as const);
+  await expect.poll(() => fileName(page)).toBe(name);
+}
+
+/**
+ * Open the drawings test document: a group of a picture, a text box and a line, a rectangle
+ * outlined by its shape style, shapes in the line and a drawing canvas.
+ */
+export function openDrawings(page: Page) {
+  return openFixture(page, 'drawings.docx');
+}
+
+/** The streams of a PDF made by the app, inflated and joined: page contents, fonts and pictures. */
+export function pdfStreams(bytes: Buffer): string {
+  const out: string[] = [];
+  for (const m of bytes.toString('latin1').matchAll(/\/Filter \/FlateDecode \/Length (\d+) >>\nstream\n/g)) {
+    const start = m.index + m[0].length;
+    out.push(inflateSync(bytes.subarray(start, start + Number(m[1]))).toString('latin1'));
+  }
+  return out.join('\n');
+}
+
+const clocks = new WeakSet<Page>();
+
+/**
+ * Print with Ctrl+P and count the pages Chrome makes. The editor lays out its print pages, calls
+ * window.print a moment later and removes the pages a second after that: the page's clock is
+ * held while the PDF is made.
+ */
+export async function printedPages(page: Page): Promise<number> {
+  await page.evaluate(() => {
+    const w = window as unknown as { print(): void; e2ePrints: number };
+    w.e2ePrints = 0;
+    w.print = () => {
+      w.e2ePrints += 1;
+    };
+  });
+  await body(page).focus();
+  if (!clocks.has(page)) {
+    await page.clock.install();
+    clocks.add(page);
+  }
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await page.keyboard.press('ControlOrMeta+P');
+  await page.clock.runFor(200);
+  expect(await page.evaluate(() => (window as unknown as { e2ePrints: number }).e2ePrints)).toBe(1);
+  await expect(page.locator('.dx-print-host')).toHaveCount(1);
+  const pdf = await page.pdf({ preferCSSPageSize: true });
+  await page.clock.runFor(1000);
+  await expect(page.locator('.dx-print-host')).toHaveCount(0);
+  await page.clock.resume();
+  return pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+}
+
+/** A picture's distances from its paragraph's left and right content edges, in pixels at 100% zoom. */
+export async function picturePlace(page: Page, picture: Locator): Promise<{ left: number; right: number }> {
+  const zoom = await editorValue(page, (e) => e.zoom);
+  return picture.evaluate((img, z) => {
+    const para = img.closest('.dx-image-wrap')!.parentElement!.closest('.dx-p')!;
+    const s = getComputedStyle(para);
+    const p = para.getBoundingClientRect();
+    const r = img.getBoundingClientRect();
+    return {
+      left: (r.left - p.left) / z - parseFloat(s.paddingLeft) - parseFloat(s.borderLeftWidth),
+      right: (p.right - r.right) / z - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth),
+    };
+  }, zoom);
 }
 
 /** The body editor (header and footer views also use the dx-doc class). */

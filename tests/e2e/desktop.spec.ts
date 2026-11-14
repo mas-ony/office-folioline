@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { body, caretAfter, docText, downloadOf, editHeader, editorValue, fileName, menu, openApp, openSample, selectText, selectWord, wordPoint } from './helpers';
+import { body, caretAfter, docText, downloadOf, editHeader, editorValue, fileName, loadFixture, menu, openApp, openDrawings, openFixture, openSample, pdfStreams, picturePlace, printedPages, selectText, selectWord, wordPoint } from './helpers';
 
 test.describe('desktop', () => {
   test('types and formats text from the toolbar', async ({ page }) => {
@@ -184,6 +184,67 @@ test.describe('desktop', () => {
     await expect(selected).toHaveCount(0);
     await picture.click();
     await expect(selected).toHaveCount(1);
+  });
+
+  test('draws shapes and groups of pictures, text boxes and lines', async ({ page }) => {
+    await openDrawings(page);
+    const drawings = body(page).locator('.dx-drawing');
+    await expect(drawings).toHaveCount(7);
+    await expect(body(page).locator('.dx-opaque')).toHaveCount(0);
+    // The group's picture and text box, drawn at twice the size of the group's child space.
+    const group = drawings.first();
+    const heading = group.getByText('Drawn heading');
+    await expect(heading).toBeVisible();
+    const g = (await group.boundingBox())!;
+    const pic = (await group.locator('.dx-drawing-pic').boundingBox())!;
+    const text = (await heading.boundingBox())!;
+    expect(pic.width / g.width).toBeCloseTo(0.125, 2);
+    expect(pic.height / g.height).toBeCloseTo(1, 2);
+    expect((text.x + text.width / 2 - g.x) / g.width).toBeCloseTo(0.575, 2);
+    // The rectangle's outline: the theme's first accent, darkened by the shape's style.
+    await expect(drawings.nth(1).locator('path')).toHaveCSS('stroke', 'rgb(47, 82, 143)');
+    await group.locator('.dx-drawing-pic').click();
+    await expect(group).toHaveClass(/ProseMirror-selectednode/);
+    const pdf = await page.evaluate(async () => Array.from(await (window as unknown as { docxEditor: { exportPdf(): Promise<Uint8Array> } }).docxEditor.exportPdf()));
+    expect(pdfStreams(Buffer.from(pdf))).toContain('0.184 0.322 0.561 RG');
+  });
+
+  test('prints every page, with no blank page after the last', async ({ page }) => {
+    // One page: printing it must not add an empty second one.
+    await openFixture(page, 'columns.docx');
+    await expect.poll(() => editorValue(page, (e) => e.pageCount)).toBe(1);
+    expect(await printedPages(page)).toBe(1);
+    await loadFixture(page, 'kitchen-sink.docx');
+    await expect.poll(() => editorValue(page, (e) => e.pageCount)).toBe(3);
+    expect(await printedPages(page)).toBe(3);
+  });
+
+  test('a picture wrapped top and bottom keeps its horizontal position', async ({ page }) => {
+    await openSample(page);
+    const picture = page.locator('img.dx-image[alt^="Bar chart"]').first();
+    const wrapAs = async (kind: string, offset?: string) => {
+      await picture.click();
+      const button = page.getByTestId('tb-image-props');
+      if (!(await button.isVisible())) await page.getByTestId('tb-more').click();
+      await button.click();
+      await page.getByTestId('ip-wrap').selectOption(kind);
+      if (offset !== undefined) await page.locator('#ip-ho').fill(offset);
+      await page.getByTestId('image-props-apply').click();
+    };
+    const place = () => picturePlace(page, picture);
+    await picture.scrollIntoViewIfNeeded();
+    // At the column's left edge, where the saved file puts it; then half an inch (48 px) from it.
+    await wrapAs('topAndBottom');
+    await expect.poll(async () => (await place()).left).toBeCloseTo(0, 0);
+    await wrapAs('topAndBottom', '0.5');
+    await expect.poll(async () => (await place()).left).toBeCloseTo(48, 0);
+    // Aligned right: it keeps Square right's alignment, also when the dialog is applied again with
+    // its position left alone.
+    await wrapAs('squareRight');
+    await wrapAs('topAndBottom');
+    await expect.poll(async () => (await place()).right).toBeCloseTo(0, 0);
+    await wrapAs('topAndBottom');
+    await expect.poll(async () => (await place()).right).toBeCloseTo(0, 0);
   });
 
   test('adds a comment from the selection, replies and resolves it', async ({ page }) => {

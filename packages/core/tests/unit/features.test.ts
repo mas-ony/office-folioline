@@ -162,6 +162,20 @@ describe('protection, pictures, page setup and paragraphs', () => {
     ed.destroy();
   });
 
+  it('wraps a picture top and bottom at its horizontal offset', () => {
+    const ed = openEditor(example('sample.docx'), 'sample.docx');
+    const chart = () => nodes(ed.view.state.doc, 'image').find((n) => n.node.attrs.alt?.startsWith('Bar chart'))!;
+    const box = () => ed.view.nodeDOM(chart().pos) as HTMLElement;
+    // From the line it goes to the column's left edge, where the saved file puts it.
+    setImageProps(ed.view, chart().pos, { wrap: 'topAndBottom' });
+    expect(chart().node.attrs.anchor).toMatchObject({ wrap: 'topAndBottom', hOffset: 0 });
+    expect(box().style.marginLeft).toBe('0px');
+    setImageProps(ed.view, chart().pos, { hOffset: 457200 });
+    expect(box().style.marginLeft).toBe('48px');
+    expect(part(ed.exportDocx(), 'word/document.xml')).toMatch(/<wp:positionH relativeFrom="column"><wp:posOffset>457200<\/wp:posOffset><\/wp:positionH>[\s\S]*?<wp:wrapTopAndBottom\/>/);
+    ed.destroy();
+  });
+
   it('turns pages to landscape and changes margins', () => {
     const ed = openEditor(example('agreement.docx'), 'agreement.docx');
     const setup = ed.pageSetup();

@@ -56,6 +56,7 @@ export function anchorFor(kind: WrapKind, cur: AnchorInfo | null): AnchorInfo | 
       break;
     case 'topAndBottom':
       base.wrap = 'topAndBottom';
+      if (base.hAlign === undefined && base.hOffset === undefined) base.hOffset = 0;
       break;
     case 'behind':
     case 'inFront':

@@ -108,10 +108,18 @@ export function ImagePropertiesDialog() {
   const anchor = a?.anchor ?? null;
   const metric = rulerUsesMetric();
   const unit = t(metric ? 'common.centimeters' : 'common.inches');
-  const [hOff, setHOff] = useState(anchor?.hOffset !== undefined ? emuToField(anchor.hOffset, metric) : '0');
-  const [vOff, setVOff] = useState(anchor?.vOffset !== undefined ? emuToField(anchor.vOffset, metric) : '0');
-  const [hRel, setHRel] = useState<string>(anchor?.hRelative ?? 'column');
-  const [vRel, setVRel] = useState<string>(anchor?.vRelative ?? 'paragraph');
+  // The position as its fields first show it. The fields hold only what is typed or picked (undefined
+  // until then), and only that is applied, so a picture placed by an alignment keeps it.
+  const shown = {
+    hOff: anchor?.hOffset !== undefined ? emuToField(anchor.hOffset, metric) : '0',
+    vOff: anchor?.vOffset !== undefined ? emuToField(anchor.vOffset, metric) : '0',
+    hRel: anchor?.hRelative ?? 'column',
+    vRel: anchor?.vRelative ?? 'paragraph',
+  };
+  const [hOff, setHOff] = useState<string>();
+  const [vOff, setVOff] = useState<string>();
+  const [hRel, setHRel] = useState<string>();
+  const [vRel, setVRel] = useState<string>();
   const [error, setError] = useState('');
   const close = () => openModal(null);
   if (!img || !a) return null;
@@ -136,10 +144,10 @@ export function ImagePropertiesDialog() {
     }
     const patch: Parameters<typeof setImageProps>[2] = { width: wn * EMU_PER_PT, height: hn * EMU_PER_PT, title, alt, wrap, href };
     if (floating && anchor && wrap === wrapKind(anchor)) {
-      patch.hOffset = fieldToEmu(hOff, metric, anchor.hOffset);
-      patch.vOffset = fieldToEmu(vOff, metric, anchor.vOffset);
-      patch.hRelative = hRel;
-      patch.vRelative = vRel;
+      if (hOff !== undefined) patch.hOffset = fieldToEmu(hOff, metric, anchor.hOffset);
+      if (vOff !== undefined) patch.vOffset = fieldToEmu(vOff, metric, anchor.vOffset);
+      if (hRel !== undefined) patch.hRelative = hRel;
+      if (vRel !== undefined) patch.vRelative = vRel;
     }
     setImageProps(editor.activeView, img.pos, patch);
     close();
@@ -168,13 +176,13 @@ export function ImagePropertiesDialog() {
       <Section title={t('imageProps.position')}>
         {floating && anchor ? (
           <>
-            <Row label={t('imageProps.horizontal')} htmlFor="ip-ho" unit={unit}><input id="ip-ho" className="fl-input" type="number" step="0.1" value={hOff} onChange={(e) => setHOff(e.target.value)} /></Row>
+            <Row label={t('imageProps.horizontal')} htmlFor="ip-ho" unit={unit}><input id="ip-ho" className="fl-input" type="number" step="0.1" value={hOff ?? shown.hOff} onChange={(e) => setHOff(e.target.value)} /></Row>
             <Row label={t('imageProps.relativeH')} htmlFor="ip-hr">
-              <select id="ip-hr" className="fl-input" value={hRel} onChange={(e) => setHRel(e.target.value)}>{H_RELATIVE.map((r) => <option key={r} value={r}>{t(relKey(r))}</option>)}</select>
+              <select id="ip-hr" className="fl-input" value={hRel ?? shown.hRel} onChange={(e) => setHRel(e.target.value)}>{H_RELATIVE.map((r) => <option key={r} value={r}>{t(relKey(r))}</option>)}</select>
             </Row>
-            <Row label={t('imageProps.vertical')} htmlFor="ip-vo" unit={unit}><input id="ip-vo" className="fl-input" type="number" step="0.1" value={vOff} onChange={(e) => setVOff(e.target.value)} /></Row>
+            <Row label={t('imageProps.vertical')} htmlFor="ip-vo" unit={unit}><input id="ip-vo" className="fl-input" type="number" step="0.1" value={vOff ?? shown.vOff} onChange={(e) => setVOff(e.target.value)} /></Row>
             <Row label={t('imageProps.relativeV')} htmlFor="ip-vr">
-              <select id="ip-vr" className="fl-input" value={vRel} onChange={(e) => setVRel(e.target.value)}>{V_RELATIVE.map((r) => <option key={r} value={r}>{t(relKey(r))}</option>)}</select>
+              <select id="ip-vr" className="fl-input" value={vRel ?? shown.vRel} onChange={(e) => setVRel(e.target.value)}>{V_RELATIVE.map((r) => <option key={r} value={r}>{t(relKey(r))}</option>)}</select>
             </Row>
           </>
         ) : (
